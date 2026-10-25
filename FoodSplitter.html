@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Food Splitter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f1f2f4;
+    --surface: #ffffff;
+    --ink: #171a1f;
+    --muted: #5f6670;
+    --line: #e0e3e8;
+    --line-strong: #c3c9d1;
+    --warn: #a14a00;
+    --warn-bg: #fdf1e3;
+    --focus: #2f6fde;
+
+    /* The results panel is the one dark, high-contrast element on the page. */
+    --panel: #1b1f26;
+    --panel-ink: #f2f4f7;
+    --panel-muted: #a2a9b4;
+    --panel-line: #323843;
+    --panel-warn: #f5b25c;
+    --panel-ok: #69db7c;
+
+    /* One colour per person, assigned in the order they were added. */
+    --p0: #2f6fde; --p1: #d6336c; --p2: #2b8a3e; --p3: #e8590c;
+    --p4: #7048e8; --p5: #0c8599; --p6: #a37200; --p7: #8d5a3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0f1114;
+      --surface: #171a1f;
+      --ink: #eceef1;
+      --muted: #9aa1ab;
+      --line: #2a2e35;
+      --line-strong: #454b54;
+      --warn: #f5b25c;
+      --warn-bg: #2e2312;
+      --focus: #74a7ff;
+      --panel: #20252d;
+      --panel-line: #353b45;
+      --p0: #5b8ef0; --p1: #e0507f; --p2: #3fa35a; --p3: #f07a32;
+      --p4: #8d6cf0; --p5: #1b9fb5; --p6: #c08f12; --p7: #a87454;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 16px/1.5 "Schibsted Grotesk", system-ui, sans-serif;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; padding: 0; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  input[type=number] { -moz-appearance: textfield; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* Page */
+  .page { max-width: 1120px; margin: 0 auto; padding: 40px 24px 64px; }
+  .masthead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px 24px; margin-bottom: 32px; }
+  .masthead h1 { margin: 0; font-size: 2.1rem; line-height: 1.1; font-weight: 800; letter-spacing: -0.025em; }
+  .masthead p { margin: 8px 0 0; color: var(--muted); max-width: 48ch; }
+  .masthead-tools { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .side { position: sticky; top: 24px; display: grid; gap: 16px; }
+
+  /* Sections */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .card + .card { margin-top: 16px; }
+  .card h2 { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; }
+  .card h2 .num { color: var(--line-strong); font-weight: 800; }
+  .hint { margin: 10px 0 0; color: var(--muted); font-size: .88rem; max-width: 62ch; }
+
+  /* Controls */
+  .input {
+    width: 100%; min-width: 0;
+    padding: 9px 11px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+  }
+  .input:focus { border-color: var(--focus); outline: none; box-shadow: 0 0 0 1px var(--focus); }
+  .input::placeholder { color: var(--muted); opacity: .75; }
+  select.input { cursor: pointer; }
+  .btn { padding: 9px 16px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
+  .btn-ink { background: var(--ink); color: var(--surface); }
+  .btn-ink:hover { background: color-mix(in srgb, var(--ink) 84%, var(--surface)); }
+  .btn-text { padding: 8px 10px; border-radius: 8px; color: var(--muted); font-weight: 500; }
+  .btn-text:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .btn-sm { padding: 5px 10px; font-size: .85rem; }
+  .icon-btn { flex-shrink: 0; width: 32px; height: 32px; display: inline-grid; place-items: center; border-radius: 8px; color: var(--muted); font-size: 1.1rem; line-height: 1; }
+  .icon-btn:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row .grow { flex: 1 1 160px; }
+  .row .money-in { flex: 0 1 112px; }
+  .row .qty-in { flex: 0 1 72px; }
+
+  .avatar {
+    flex-shrink: 0; width: 30px; height: 30px;
+    display: inline-grid; place-items: center;
+    border-radius: 50%; background: var(--c); color: #fff;
+    font-size: .8rem; font-weight: 700;
+  }
+  .avatar.sm { width: 22px; height: 22px; font-size: .68rem; }
+
+  /* People */
+  .people { display: grid; gap: 6px; margin-top: 12px; }
+  .person { display: flex; align-items: center; gap: 10px; }
+  .person .input { border-color: transparent; background: transparent; padding-inline: 8px; font-weight: 500; }
+  .person .input:hover { border-color: var(--line); }
+  .person .input:focus { background: var(--surface); border-color: var(--focus); }
+
+  /* Dishes */
+  .items { display: grid; gap: 10px; margin-top: 16px; }
+  .item { border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .item.is-warn { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); box-shadow: inset 3px 0 0 var(--warn); }
+  .item .row .input { border-color: var(--line); }
+  .item .row .name-in { font-weight: 600; }
+  .item-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0 12px; }
+  .item-meta .cost { font-weight: 700; }
+  .item-meta .each { color: var(--muted); font-size: .88rem; margin-left: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 3px 12px 3px 3px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface);
+    font-size: .9rem; font-weight: 500; color: var(--muted);
+  }
+  .chip:hover { border-color: var(--line-strong); color: var(--ink); }
+  .chip .avatar { background: var(--line-strong); }
+  .chip[aria-pressed="true"] { color: var(--ink); border-color: color-mix(in srgb, var(--c) 50%, transparent); background: color-mix(in srgb, var(--c) 12%, var(--surface)); }
+  .chip[aria-pressed="true"] .avatar { background: var(--c); }
+  .shares { display: grid; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .share { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; font-size: .92rem; }
+  .share .name { overflow-wrap: anywhere; }
+  .share .amt { min-width: 78px; text-align: right; color: var(--muted); }
+  .stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+  .stepper button { width: 30px; height: 30px; font-size: 1.05rem; font-weight: 600; color: var(--muted); }
+  .stepper button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .stepper input { width: 38px; border: 0; border-inline: 1px solid var(--line); background: var(--surface); text-align: center; font-weight: 600; }
+  .share-total { margin-top: 2px; padding-top: 8px; border-top: 1px dashed var(--line); font-weight: 600; }
+  .share-total > span:first-child { width: 22px; }
+  .share-total .amt { color: var(--ink); }
+  .share-total .count { width: 100px; text-align: center; }
+  .note { margin: 12px 0 0; padding: 9px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: .88rem; }
+  .empty { margin-top: 12px; padding: 24px 16px; border: 1px dashed var(--line-strong); border-radius: 10px; color: var(--muted); text-align: center; font-size: .92rem; }
+  .subtotal { display: flex; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); font-weight: 700; }
+
+  /* Tax, tip, discount */
+  .extras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .extras label { display: grid; gap: 5px; font-size: .85rem; font-weight: 500; color: var(--muted); }
+  .extras .input { color: var(--ink); }
+
+  /* Results panel */
+  .panel { background: var(--panel); color: var(--panel-ink); border-color: var(--panel); }
+  .panel h2 .num { color: var(--panel-line); }
+  .panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .panel .btn-light { background: var(--panel-ink); color: var(--panel); }
+  .panel .btn-light:hover { background: color-mix(in srgb, var(--panel-ink) 85%, var(--panel)); }
+  .payer { display: grid; gap: 5px; margin-bottom: 8px; font-size: .85rem; font-weight: 500; color: var(--panel-muted); }
+  .payer .input { background: color-mix(in srgb, var(--panel-ink) 7%, var(--panel)); border-color: var(--panel-line); color: var(--panel-ink); }
+  .payer option { color: #171a1f; background: #fff; }
+  .result { border-bottom: 1px solid var(--panel-line); }
+  .result summary { display: flex; align-items: center; gap: 12px; padding: 12px 0; cursor: pointer; list-style: none; }
+  .result summary::-webkit-details-marker { display: none; }
+  .result .who { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
+  .result .who small { display: block; color: var(--panel-muted); font-size: .8rem; font-weight: 400; }
+  .result .total { font-size: 1.2rem; font-weight: 700; white-space: nowrap; }
+  .result .chev { color: var(--panel-muted); transition: transform .15s; }
+  .result[open] .chev { transform: rotate(90deg); }
+  .breakdown { display: grid; gap: 3px; padding: 0 0 12px 42px; color: var(--panel-muted); font-size: .86rem; }
+  .breakdown div { display: flex; justify-content: space-between; gap: 12px; }
+  .grand { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-top: 16px; }
+  .grand span:first-child { color: var(--panel-muted); font-weight: 500; }
+  .grand span:last-child { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+  .panel .note { background: color-mix(in srgb, var(--panel-warn) 14%, var(--panel)); color: var(--panel-warn); }
+  .status { margin: 12px 0 0; color: var(--panel-ok); font-size: .88rem; }
+  .panel .empty { border-color: var(--panel-line); color: var(--panel-muted); }
+
+  /* Phone total bar */
+  .mobilebar { display: none; }
+  .toast {
+    position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%);
+    padding: 10px 16px; border-radius: 8px; background: var(--ink); color: var(--surface);
+    font-size: .9rem; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .toast, .result .chev { transition: none; } }
+
+  @media (max-width: 880px) {
+    .page { padding-bottom: 104px; }
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .side { position: static; }
+    .mobilebar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      position: fixed; inset: auto 0 0 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      background: var(--panel); color: var(--panel-ink);
+    }
+    .mobilebar span { display: block; font-size: .8rem; color: var(--panel-muted); }
+    .mobilebar strong { font-size: 1.25rem; font-weight: 800; }
+    .mobilebar .btn { background: var(--panel-ink); color: var(--panel); text-decoration: none; }
+  }
+  @media (max-width: 520px) {
+    .page { padding: 24px 16px 104px; }
+    .masthead h1 { font-size: 1.75rem; }
+    .card { padding: 16px; }
+    .row.wrap { display: grid; grid-template-columns: 1fr 1fr auto; }
+    .row.wrap .grow { grid-column: 1 / 3; }
+    .row.wrap .icon-btn { grid-column: 3; grid-row: 1; }
+    #itemForm .grow { grid-column: 1 / -1; }
+    .extras { grid-template-columns: 1fr 1fr; }
+    .extras label:last-child { grid-column: 1 / -1; }
+    .share { gap: 8px; }
+    .share .amt { min-width: 0; font-size: .85rem; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <div>
+      <h1>Food Splitter</h1>
+      <p>Add who ate, what you ordered and who shared each dish. Everyone pays for exactly their part.</p>
+    </div>
+    <div class="masthead-tools">
+      <select id="currency" class="input" style="width:auto" aria-label="Currency">
+        <option value="INR">₹ Rupee</option>
+        <option value="USD">$ Dollar</option>
+        <option value="EUR">€ Euro</option>
+        <option value="GBP">£ Pound</option>
+      </select>
+      <button class="btn-text" data-action="demo">Load example</button>
+      <button class="btn-text" data-action="clear">Start over</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <main>
+      <section class="card" aria-labelledby="people-title">
+        <h2 id="people-title"><span class="num" aria-hidden="true">1</span>People</h2>
+        <form id="personForm" class="row">
+          <input id="personName" class="input grow" type="text" placeholder="Add a name" aria-label="Person's name" autocomplete="off" required>
+          <button class="btn btn-ink" type="submit">Add person</button>
+        </form>
+        <div id="people" class="people"></div>
+      </section>
+
+      <section class="card" aria-labelledby="items-title">
+        <h2 id="items-title"><span class="num" aria-hidden="true">2</span>Dishes</h2>
+        <form id="itemForm" class="row wrap">
+          <input id="itemName" class="input grow" type="text" placeholder="Dish, e.g. Paneer tikka" aria-label="Dish name" autocomplete="off" required>
+          <input id="itemPrice" class="input money-in" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Price" aria-label="Price of one" required>
+          <input id="itemQty" class="input qty-in" type="number" min="1" step="1" inputmode="numeric" value="1" aria-label="How many" title="How many" required>
+          <button class="btn btn-ink" type="submit">Add dish</button>
+        </form>
+        <p class="hint">Pick who shared each dish. Give someone more shares if they ate more: 2 shares pays twice as much as 1.</p>
+        <div id="items" class="items"></div>
+        <div class="subtotal"><span>Food subtotal</span><span id="foodTotal"></span></div>
+      </section>
+    </main>
+
+    <aside class="side">
+      <section class="card" aria-labelledby="extras-title">
+        <h2 id="extras-title"><span class="num" aria-hidden="true">3</span>Tax, tip and discount</h2>
+        <div class="extras">
+          <label>Tax (%)<input class="input" data-extra="taxPct" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+          <label>Tip or service (%)<input class="input" data-extra="tipPct" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+          <label>Discount<input class="input" data-extra="discount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+        </div>
+        <p class="hint">These are shared in proportion to what each person ate.</p>
+      </section>
+
+      <section class="card panel" id="summaryCard" aria-labelledby="summary-title">
+        <div class="panel-head">
+          <h2 id="summary-title"><span class="num" aria-hidden="true">4</span>Who pays what</h2>
+          <button class="btn btn-light btn-sm" data-action="copy">Copy split</button>
+        </div>
+        <label class="payer">Paid by
+          <select id="payer" class="input"></select>
+        </label>
+        <div id="summary"></div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div class="mobilebar">
+  <div><span>Bill total</span><strong id="mobileTotal"></strong></div>
+  <a class="btn" href="#summaryCard">See split</a>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------- State ---------- */
+
+const STORAGE_KEY = "food-splitter-v2";
+const LOCALES = { INR: "en-IN", USD: "en-US", EUR: "de-DE", GBP: "en-GB" };
+const PERSON_COLOURS = 8;
+
+function demoState() {
+  return {
+    nextId: 7,
+    currency: "INR",
+    payerId: 1,
+    people: [
+      { id: 1, name: "Alex" },
+      { id: 2, name: "Sam" },
+      { id: 3, name: "Jamie" },
+    ],
+    items: [
+      { id: 4, name: "Margherita pizza", price: 120, qty: 5, shares: { 1: 1, 2: 3, 3: 1 } },
+      { id: 5, name: "Masala fries", price: 90, qty: 2, shares: { 2: 1, 3: 1 } },
+      { id: 6, name: "Cold coffee", price: 24, qty: 10, shares: { 1: 7, 3: 3 } },
+    ],
+    extras: { taxPct: 5, tipPct: 0, discount: 0 },
+  };
+}
+
+function emptyState() {
+  return { nextId: 1, currency: "INR", payerId: null, people: [], items: [], extras: { taxPct: 0, tipPct: 0, discount: 0 } };
+}
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved && Array.isArray(saved.people) && Array.isArray(saved.items)) {
+      return { ...emptyState(), ...saved, extras: { ...emptyState().extras, ...saved.extras } };
+    }
+  } catch {}
+  return demoState();
+}
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+}
+
+let state = loadState();
+let formatter;
+
+/* ---------- Helpers ---------- */
+
+const $ = (sel) => document.querySelector(sel);
+const sum = (xs) => xs.reduce((a, b) => a + b, 0);
+const nextId = () => state.nextId++;
+const money = (n) => formatter.format(n);
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const findItem = (id) => state.items.find((i) => i.id === Number(id));
+const findPerson = (id) => state.people.find((p) => p.id === Number(id));
+const colourOf = (person) => `var(--p${state.people.indexOf(person) % PERSON_COLOURS})`;
+
+function setCurrency(code) {
+  state.currency = LOCALES[code] ? code : "INR";
+  formatter = new Intl.NumberFormat(LOCALES[state.currency], { style: "currency", currency: state.currency });
+}
+
+function avatar(person, small = false) {
+  const initial = escapeHtml((person.name.trim()[0] || "?").toUpperCase());
+  return `<span class="avatar${small ? " sm" : ""}" style="--c:${colourOf(person)}" aria-hidden="true">${initial}</span>`;
+}
+
+const itemTotal = (item) => item.price * item.qty;
+const isSharing = (item, personId) => Object.prototype.hasOwnProperty.call(item.shares, personId);
+const pointsOf = (item, personId) => (isSharing(item, personId) ? Math.max(0, Number(item.shares[personId]) || 0) : 0);
+const itemPoints = (item) => sum(state.people.map((p) => pointsOf(item, p.id)));
+
+function shareAmount(item, personId) {
+  const pts = itemPoints(item);
+  return pts > 0 ? (itemTotal(item) * pointsOf(item, personId)) / pts : 0;
+}
+
+/* Round each person's total to whole cents so they add up exactly to the grand total. */
+function allocateCents(values, totalCents) {
+  const cents = values.map((v) => Math.floor(v * 100 + 1e-9));
+  let left = totalCents - sum(cents);
+  const order = values.map((v, i) => [v * 100 - cents[i], i]).sort((a, b) => b[0] - a[0]);
+  for (let k = 0; left > 0 && order.length; k = (k + 1) % order.length, left--) cents[order[k][1]]++;
+  return cents;
+}
+
+/* ---------- Calculation ---------- */
+
+function computeSplit() {
+  const food = new Map(state.people.map((p) => [p.id, 0]));
+  const lines = new Map(state.people.map((p) => [p.id, []]));
+
+  for (const item of state.items) {
+    for (const p of state.people) {
+      const amount = shareAmount(item, p.id);
+      if (amount > 0) {
+        food.set(p.id, food.get(p.id) + amount);
+        lines.get(p.id).push({ label: item.name, amount });
+      }
+    }
+  }
+
+  const foodTotal = sum(state.items.map(itemTotal));
+  const assigned = sum([...food.values()]);
+  const discount = Math.min(state.extras.discount, assigned);
+  const base = assigned - discount;
+  const tax = (base * state.extras.taxPct) / 100;
+  const tip = (base * state.extras.tipPct) / 100;
+  const grand = base + tax + tip;
+
+  const exact = state.people.map((p) => (assigned > 0 ? (grand * food.get(p.id)) / assigned : 0));
+  const cents = allocateCents(exact, Math.round(grand * 100));
+
+  const rows = state.people.map((person, i) => {
+    const frac = assigned > 0 ? food.get(person.id) / assigned : 0;
+    return {
+      person,
+      lines: lines.get(person.id),
+      discount: discount * frac,
+      tax: tax * frac,
+      tip: tip * frac,
+      total: cents[i] / 100,
+    };
+  });
+
+  return { rows, foodTotal, unassigned: foodTotal - assigned, grand: sum(cents) / 100 };
+}
+
+/* ---------- Rendering ---------- */
+
+function renderPeople() {
+  $("#people").innerHTML = state.people.length
+    ? state.people.map((p) => `
+        <div class="person">
+          ${avatar(p)}
+          <input class="input" type="text" value="${escapeHtml(p.name)}" data-rename="${p.id}" data-key="name-p${p.id}" aria-label="Rename ${escapeHtml(p.name)}">
+          <button class="icon-btn" data-action="remove-person" data-person="${p.id}" aria-label="Remove ${escapeHtml(p.name)}" title="Remove ${escapeHtml(p.name)}">×</button>
+        </div>`).join("")
+    : `<div class="empty">No one added yet. Start with the people at the table.</div>`;
+}
+
+function renderItem(item) {
+  const sharing = state.people.filter((p) => isSharing(item, p.id));
+  const pts = itemPoints(item);
+  const everyone = state.people.length > 0 && sharing.length === state.people.length;
+
+  let warning = "";
+  if (state.people.length && !sharing.length) warning = "No one is sharing this dish yet, so it isn’t in anyone’s total.";
+  else if (sharing.length && pts === 0) warning = "Everyone sharing this has 0 shares, so it isn’t in anyone’s total.";
+
+  const chips = state.people.map((p) => `
+    <button type="button" class="chip" style="--c:${colourOf(p)}" aria-pressed="${isSharing(item, p.id)}" data-action="toggle" data-item="${item.id}" data-person="${p.id}" data-key="chip-${item.id}-${p.id}">
+      ${avatar(p, true)}${escapeHtml(p.name)}
+    </button>`).join("");
+
+  const shares = sharing.length ? `
+    <div class="shares">
+      ${sharing.map((p) => `
+        <div class="share">
+          ${avatar(p, true)}
+          <span class="name">${escapeHtml(p.name)}</span>
+          <span class="amt">${pts > 0 ? money(shareAmount(item, p.id)) : "–"}</span>
+          <span class="stepper">
+            <button type="button" data-action="step" data-step="-1" data-item="${item.id}" data-person="${p.id}" data-key="dec-${item.id}-${p.id}" aria-label="One less share for ${escapeHtml(p.name)}">−</button>
+            <input type="number" min="0" step="1" inputmode="numeric" value="${pointsOf(item, p.id)}" data-points data-item="${item.id}" data-person="${p.id}" data-key="pts-${item.id}-${p.id}" aria-label="Shares for ${escapeHtml(p.name)}">
+            <button type="button" data-action="step" data-step="1" data-item="${item.id}" data-person="${p.id}" data-key="inc-${item.id}-${p.id}" aria-label="One more share for ${escapeHtml(p.name)}">+</button>
+          </span>
+        </div>`).join("")}
+      <div class="share share-total">
+        <span></span>
+        <span class="name">Total shares</span>
+        <span class="amt">${money(itemTotal(item))}</span>
+        <span class="count">${pts}</span>
+      </div>
+    </div>` : "";
+
+  return `
+    <article class="item${warning ? " is-warn" : ""}">
+      <div class="row wrap">
+        <input class="input grow name-in" type="text" value="${escapeHtml(item.name)}" data-edit="name" data-item="${item.id}" data-key="name-i${item.id}" aria-label="Dish name">
+        <input class="input money-in" type="number" min="0.01" step="0.01" inputmode="decimal" value="${item.price}" data-edit="price" data-item="${item.id}" data-key="price-i${item.id}" aria-label="Price of one ${escapeHtml(item.name)}">
+        <input class="input qty-in" type="number" min="1" step="1" inputmode="numeric" value="${item.qty}" data-edit="qty" data-item="${item.id}" data-key="qty-i${item.id}" aria-label="How many ${escapeHtml(item.name)}">
+        <button class="icon-btn" data-action="remove-item" data-item="${item.id}" aria-label="Remove ${escapeHtml(item.name)}" title="Remove ${escapeHtml(item.name)}">×</button>
+      </div>
+      <div class="item-meta">
+        <span><span class="cost">${money(itemTotal(item))}</span>${item.qty > 1 ? `<span class="each">${item.qty} × ${money(item.price)}</span>` : ""}</span>
+        ${state.people.length > 1 ? `<button type="button" class="btn-text btn-sm" data-action="all" data-item="${item.id}" data-key="all-${item.id}">${everyone ? "Clear" : "Everyone"}</button>` : ""}
+      </div>
+      <div class="chips">${chips || `<span class="hint" style="margin:0">Add people first, then pick who shared this.</span>`}</div>
+      ${shares}
+      ${warning ? `<p class="note">${warning}</p>` : ""}
+    </article>`;
+}
+
+function renderItems() {
+  $("#items").innerHTML = state.items.length
+    ? state.items.map(renderItem).join("")
+    : `<div class="empty">No dishes yet. Add the first one above.</div>`;
+}
+
+function renderPayer() {
+  if (!findPerson(state.payerId)) state.payerId = null;
+  $("#payer").innerHTML = `<option value="">Not set</option>` +
+    state.people.map((p) => `<option value="${p.id}"${p.id === state.payerId ? " selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+}
+
+function renderSummary() {
+  const { rows, foodTotal, unassigned, grand } = computeSplit();
+  const payer = findPerson(state.payerId);
+  $("#foodTotal").textContent = money(foodTotal);
+  $("#mobileTotal").textContent = money(grand);
+
+  if (!state.people.length) {
+    $("#summary").innerHTML = `<div class="empty">Add people to see what each of them pays.</div>`;
+    return;
+  }
+
+  const detail = (label, amount, sign = "") => (amount > 0.004 ? `<div><span>${label}</span><span>${sign}${money(amount)}</span></div>` : "");
+
+  const subtitle = (row) => {
+    if (!payer) return "";
+    if (row.person.id === payer.id) {
+      const back = grand - row.total;
+      return back > 0.004 ? `Paid the bill, gets ${money(back)} back` : "Paid the bill";
+    }
+    return row.total > 0 ? `Pays ${escapeHtml(payer.name)}` : "";
+  };
+
+  $("#summary").innerHTML = rows.map((row) => `
+      <details class="result">
+        <summary>
+          ${avatar(row.person)}
+          <span class="who">${escapeHtml(row.person.name)}${subtitle(row) ? `<small>${subtitle(row)}</small>` : ""}</span>
+          <span class="total">${money(row.total)}</span>
+          <span class="chev" aria-hidden="true">›</span>
+        </summary>
+        <div class="breakdown">
+          ${row.lines.length ? row.lines.map((l) => detail(escapeHtml(l.label), l.amount)).join("") : "<div>Nothing yet</div>"}
+          ${detail("Discount", row.discount, "−")}
+          ${detail("Tax", row.tax)}
+          ${detail("Tip or service", row.tip)}
+        </div>
+      </details>`).join("") + `
+    <div class="grand"><span>Bill total</span><span>${money(grand)}</span></div>
+    ${unassigned > 0.004
+      ? `<p class="note">${money(unassigned)} of food isn’t shared with anyone yet. Look for the highlighted dishes.</p>`
+      : state.items.length ? `<p class="status">Every dish is accounted for.</p>` : ""}`;
+}
+
+function renderExtras() {
+  document.querySelectorAll("[data-extra]").forEach((input) => {
+    input.value = state.extras[input.dataset.extra] || "";
+  });
+  $("#currency").value = state.currency;
+}
+
+/* Re-render everything, then put focus back where it was so keyboard users keep their place. */
+function render(focusKey) {
+  const key = focusKey ?? document.activeElement?.dataset?.key;
+  renderPeople();
+  renderItems();
+  renderPayer();
+  renderSummary();
+  saveState();
+  if (key) document.querySelector(`[data-key="${key}"]`)?.focus();
+}
+
+function toast(message) {
+  const el = $("#toast");
+  el.textContent = message;
+  el.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+/* ---------- Actions ---------- */
+
+const actions = {
+  toggle(el) {
+    const item = findItem(el.dataset.item);
+    const id = Number(el.dataset.person);
+    if (isSharing(item, id)) delete item.shares[id];
+    else item.shares[id] = 1;
+  },
+  step(el) {
+    const item = findItem(el.dataset.item);
+    const id = Number(el.dataset.person);
+    item.shares[id] = Math.max(0, Math.floor(pointsOf(item, id)) + Number(el.dataset.step));
+  },
+  all(el) {
+    const item = findItem(el.dataset.item);
+    const everyone = state.people.every((p) => isSharing(item, p.id));
+    item.shares = everyone ? {} : Object.fromEntries(state.people.map((p) => [p.id, isSharing(item, p.id) ? item.shares[p.id] : 1]));
+  },
+  "remove-item"(el) {
+    state.items = state.items.filter((i) => i.id !== Number(el.dataset.item));
+  },
+  "remove-person"(el) {
+    const id = Number(el.dataset.person);
+    state.people = state.people.filter((p) => p.id !== id);
+    state.items.forEach((i) => delete i.shares[id]);
+  },
+  demo() {
+    if (!confirm("Replace everything with the example meal?")) return false;
+    state = demoState();
+    setCurrency(state.currency);
+    renderExtras();
+  },
+  clear() {
+    if (!confirm("Remove all people and dishes?")) return false;
+    state = { ...emptyState(), currency: state.currency };
+    renderExtras();
+  },
+  async copy() {
+    if (!state.people.length || !state.items.length) {
+      toast("Add people and dishes first");
+      return false;
+    }
+    const { rows, grand } = computeSplit();
+    const payer = findPerson(state.payerId);
+    const lines = rows
+      .filter((r) => !payer || r.person.id !== payer.id)
+      .map((r) => (payer ? `${r.person.name} pays ${payer.name} ${money(r.total)}` : `${r.person.name}: ${money(r.total)}`));
+    const text = ["Food split", ...lines, `Bill total: ${money(grand)}`].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Split copied");
+    } catch {
+      toast("Your browser blocked copying. Select the totals and copy them instead.");
+    }
+    return false;
+  },
+};
+
+document.addEventListener("click", async (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el || !actions[el.dataset.action]) return;
+  if ((await actions[el.dataset.action](el)) !== false) render(el.dataset.key);
+});
+
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.dataset.edit) {
+    const item = findItem(el.dataset.item);
+    if (el.dataset.edit === "name") item.name = el.value.trim() || item.name;
+    if (el.dataset.edit === "price") item.price = Math.max(0.01, Number(el.value) || 0.01);
+    if (el.dataset.edit === "qty") item.qty = Math.max(1, Math.floor(Number(el.value) || 1));
+  } else if (el.dataset.rename) {
+    const person = findPerson(el.dataset.rename);
+    person.name = el.value.trim() || person.name;
+  } else if ("points" in el.dataset) {
+    findItem(el.dataset.item).shares[Number(el.dataset.person)] = Math.max(0, Math.floor(Number(el.value) || 0));
+  } else if (el.id === "payer") {
+    state.payerId = el.value ? Number(el.value) : null;
+  } else if (el.id === "currency") {
+    setCurrency(el.value);
+  } else {
+    return;
+  }
+  // Let focus land on whatever was tabbed or clicked to, then restore it after re-rendering.
+  setTimeout(() => render(), 0);
+});
+
+document.addEventListener("input", (e) => {
+  const key = e.target.dataset.extra;
+  if (!key) return;
+  state.extras[key] = Math.max(0, Number(e.target.value) || 0);
+  renderSummary();
+  saveState();
+});
+
+$("#personForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("#personName").value.trim();
+  if (!name) return;
+  state.people.push({ id: nextId(), name });
+  $("#personName").value = "";
+  render();
+  $("#personName").focus();
+});
+
+$("#itemForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("#itemName").value.trim();
+  const price = Number($("#itemPrice").value);
+  const qty = Math.max(1, Math.floor(Number($("#itemQty").value) || 1));
+  if (!name || !(price > 0)) return;
+  // New dishes start shared evenly by everyone; adjust from there.
+  state.items.push({ id: nextId(), name, price, qty, shares: Object.fromEntries(state.people.map((p) => [p.id, 1])) });
+  $("#itemForm").reset();
+  render();
+  $("#itemName").focus();
+});
+
+setCurrency(state.currency);
+renderExtras();
+render();
+</script>
+</body>
+</html>
